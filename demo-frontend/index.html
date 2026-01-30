@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Automation Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body>
+    <div class="background-glow"></div>
+
+    <main class="app-container">
+        <header>
+            <h1>Video <span>Synth</span></h1>
+            <p>Transform your images and audio into cinematic masterpieces.</p>
+        </header>
+
+        <section class="glass-card" id="input-section">
+            <div class="input-group">
+                <label>Audio Asset</label>
+                <div class="toggle-inputs">
+                    <button class="toggle-btn active" data-type="file" data-group="audio">File</button>
+                    <button class="toggle-btn" data-type="url" data-group="audio">URL</button>
+                </div>
+                <div class="input-wrapper" id="audio-input-container">
+                    <input type="file" id="audio-file" accept="audio/*">
+                    <input type="text" id="audio-url" placeholder="https://example.com/audio.mp3" class="hidden">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Image Assets</label>
+                <p class="hint">Upload multiple files or add multiple URLs</p>
+                <div class="toggle-inputs">
+                    <button class="toggle-btn active" data-type="file" data-group="images">Files</button>
+                    <button class="toggle-btn" data-type="url" data-group="images">URLs</button>
+                </div>
+                <div class="input-wrapper" id="images-input-container">
+                    <div id="file-uploader-box">
+                        <input type="file" id="images-files" accept="image/*" multiple class="hidden">
+                        <label for="images-files" class="upload-zone">
+                            <span>Click or Drag Images to Add</span>
+                        </label>
+                        <div id="file-preview-list"></div>
+                    </div>
+                    <div id="url-list" class="hidden">
+                        <div class="url-entry">
+                            <input type="text" class="image-url" placeholder="https://example.com/image1.jpg">
+                            <button class="add-url">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="generate-btn" class="primary-btn">Generate Video</button>
+        </section>
+
+        <section class="glass-card hidden" id="status-section">
+            <h2>Generating your video...</h2>
+            <div class="status-box">
+                <div class="spinner"></div>
+                <p id="status-text">Task Initializing...</p>
+                <p id="task-id-display"></p>
+            </div>
+            <div id="result-actions" class="hidden">
+                <a id="download-link" class="primary-btn pulse" href="#" target="_blank">Download Video</a>
+                <button id="reset-btn" class="secondary-btn">Create Another</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="assets/js/app.js"></script>
+</body>
+
+</html>
