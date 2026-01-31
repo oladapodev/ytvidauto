@@ -8,10 +8,14 @@ tests/
 .ruff_cache/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.history/
 uv.lock
-pyproject.toml
 build_script.py
-LICENSE
-README.md
 demo-frontend/
 prompt.md
+.wrangler/
+dist/
+build/
+*.whl
