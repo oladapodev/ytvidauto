@@ -12,6 +12,9 @@ dependencies = [
     "workers-py",
 ]
 
+[project.scripts]
+build = "build_script:main"
+
 [dependency-groups]
 dev = [
     "pytest",
