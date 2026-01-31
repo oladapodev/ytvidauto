@@ -1,0 +1,8 @@
+name = "yt-video-automation-api"
+main = "index.py"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["python_workers"]
+
+[vars]
+WORKERS_DEV = true
+ENV = "production"

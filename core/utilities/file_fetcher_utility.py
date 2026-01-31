@@ -4,7 +4,7 @@ from typing import Union, List
 
 import httpx
 from fastapi import UploadFile
-from src.core.config.settings import settings
+from core.config.settings import settings
 
 
 class FileFetcherUtility:
@@ -39,6 +39,8 @@ class FileFetcherUtility:
         # Generate a unique filename to avoid collisions
         unique_filename = f"{uuid.uuid4()}"
         
+        MAX_SIZE = 10 * 1024 * 1024  # 10MB limit for edge workers environment
+        
         if isinstance(input_source, str):
             if input_source.startswith("http://") or input_source.startswith("https://"):
                 # Case: Input is a URL
@@ -48,15 +50,28 @@ class FileFetcherUtility:
                 
                 target_path = self.temp_dir / f"{unique_filename}.{file_extension}"
                 
-                async with httpx.AsyncClient(timeout=settings.HTTP_FETCH_TIMEOUT_SECONDS) as client:
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    }
-                    response = await client.get(input_source, headers=headers, follow_redirects=True)
-                    response.raise_for_status()
-                    
-                    with open(target_path, "wb") as buffer:
-                        buffer.write(response.content)
+                try:
+                    async with httpx.AsyncClient(timeout=settings.HTTP_FETCH_TIMEOUT_SECONDS) as client:
+                        headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        }
+                        # Stream the download to check size
+                        async with client.stream("GET", input_source, headers=headers, follow_redirects=True) as response:
+                            response.raise_for_status()
+                            
+                            content_length = response.headers.get("Content-Length")
+                            if content_length and int(content_length) > MAX_SIZE:
+                                raise ValueError(f"Remote file exceeds size limit of {MAX_SIZE/1e6}MB")
+
+                            downloaded_size = 0
+                            with open(target_path, "wb") as buffer:
+                                async for chunk in response.aiter_bytes():
+                                    downloaded_size += len(chunk)
+                                    if downloaded_size > MAX_SIZE:
+                                        raise ValueError(f"Remote file exceeds size limit of {MAX_SIZE/1e6}MB")
+                                    buffer.write(chunk)
+                except httpx.HTTPError as e:
+                    raise RuntimeError(f"Failed to fetch remote resource: {str(e)}")
                 
                 return str(target_path.absolute())
             else:
@@ -66,15 +81,15 @@ class FileFetcherUtility:
 
         else:
             # Case: Input is likely an Upload-like object (FastAPI/Starlette UploadFile)
-            # Use hasattr to be resilient to import/class mismatch
             filename = getattr(input_source, "filename", "unnamed.tmp")
             extension = Path(filename).suffix if filename else ""
             target_path = self.temp_dir / f"{unique_filename}{extension}"
             
             # Read and write content
-            # If it has an async read method, use it
             if hasattr(input_source, "read") and callable(input_source.read):
                 content = await input_source.read()
+                if len(content) > MAX_SIZE:
+                    raise ValueError(f"Uploaded file exceeds size limit of {MAX_SIZE/1e6}MB")
             else:
                  raise ValueError(f"Input object does not have a readable content stream: {type(input_source)}")
                 

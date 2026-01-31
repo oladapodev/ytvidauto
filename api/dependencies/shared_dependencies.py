@@ -1,6 +1,6 @@
-from src.core.config.settings import ApplicationSettings, settings
-from src.core.utilities.file_fetcher_utility import FileFetcherUtility
-from src.core.utilities.video_generator_utility import VideoGenerationTaskProcessor
+from core.config.settings import ApplicationSettings, settings
+from core.utilities.file_fetcher_utility import FileFetcherUtility
+from core.utilities.video_generator_utility import VideoGenerationTaskProcessor
 
 
 def get_settings() -> ApplicationSettings:

@@ -4,16 +4,28 @@ from typing import Dict, List, Union
 
 from fastapi import APIRouter, BackgroundTasks, UploadFile, HTTPException, Depends, Request
 from fastapi.responses import FileResponse
-from src.api.models.request_response_models import VideoGenerationResponse, TaskStatusModel
-from src.api.dependencies.shared_dependencies import get_file_fetcher, get_video_processor, get_settings
-from src.core.config.settings import ApplicationSettings, settings
-from src.core.utilities.file_fetcher_utility import FileFetcherUtility
-from src.core.utilities.video_generator_utility import VideoGenerationTaskProcessor
+from api.models.request_response_models import VideoGenerationResponse, TaskStatusModel
+from api.dependencies.shared_dependencies import get_file_fetcher, get_video_processor, get_settings
+from core.config.settings import ApplicationSettings, settings
+from core.utilities.file_fetcher_utility import FileFetcherUtility
+from core.utilities.video_generator_utility import VideoGenerationTaskProcessor
 
 router = APIRouter(prefix="/video", tags=["Video Generation"])
 
 # In-memory store for task statuses (For production, use Redis or a database)
 task_registry: Dict[str, TaskStatusModel] = {}
+
+
+@router.get("/health")
+async def health_check(request: Request):
+    """
+    Health check endpoint with deployment context.
+    """
+    is_workers = "env" in request.scope
+    return {
+        "status": "running on Cloudflare Workers" if is_workers else "running locally",
+        "video_gen": "disabled" if is_workers else "enabled"
+    }
 
 
 async def run_video_generation_task(
@@ -93,6 +105,14 @@ async def generate_video(
     Endpoint to initiate video generation. 
     Accepts audio and images as files or URLs in a multipart/form-data request.
     """
+    # Cloudflare Workers Limitation Check
+    if "env" in request.scope:
+        return {
+            "task_id": "mock_id_workers",
+            "status": "not_implemented_on_edge",
+            "message": "Video rendering exceeds Workers CPU limits and lacks FFmpeg binaries. Please use a full server environment."
+        }
+
     form = await request.form()
     
     # Extract audio (either string URL or UploadFile)

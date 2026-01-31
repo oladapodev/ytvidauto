@@ -49,6 +49,10 @@ coverage.xml
 *.py,cover
 .stats
 .hypothesis/
+python_modules/
+.venv-workers/
+.venv/
+node_modules/
 .pytest_cache/
 pytestdebug.log
 

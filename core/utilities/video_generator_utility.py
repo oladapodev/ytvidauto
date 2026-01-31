@@ -2,7 +2,7 @@ import os
 import subprocess
 import uuid
 from typing import List
-from src.core.config.settings import settings
+from core.config.settings import settings
 
 
 class VideoGenerationTaskProcessor:
@@ -37,6 +37,10 @@ class VideoGenerationTaskProcessor:
         unique_run_id = str(uuid.uuid4())[:8]
         
         try:
+            # Check for subprocess availability (not available in Cloudflare Workers Pyodide)
+            if not hasattr(subprocess, "run"):
+                raise RuntimeError("Subprocess (FFmpeg) not supported on Cloudflare Workers. Use a traditional server environment.")
+
             total_duration = self.get_audio_duration(audio_path)
             # Ensure duration is at least 1 second per image to prevent FFmpeg errors
             if total_duration < len(image_paths):

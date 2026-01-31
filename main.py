@@ -1,8 +1,11 @@
-import uvicorn
+try:
+    import uvicorn
+except ImportError:
+    uvicorn = None
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.endpoints.video_generation_endpoint import router as video_router
-from src.core.config.settings import settings
+from api.endpoints.video_generation_endpoint import router as video_router
+from core.config.settings import settings
 
 def create_application() -> FastAPI:
     """
@@ -43,10 +46,10 @@ def create_application() -> FastAPI:
 # The app instance to be used by the ASGI server (uvicorn)
 app = create_application()
 
-if __name__ == "__main__":
+if __name__ == "__main__" and uvicorn:
     # Start the application manually for debugging
     uvicorn.run(
-        "src.main:app",
+        "main:app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG
