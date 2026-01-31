@@ -1,4 +1,4 @@
-name = "yt-video-automation-api"
+name = "ytvidauto"
 main = "index.py"
 compatibility_date = "2026-01-01"
 compatibility_flags = ["python_workers"]
