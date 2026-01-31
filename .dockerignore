@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.venv-workers/
+python_modules/
+.pytest_cache/
+.ruff_cache/
+.history/
+
+# Cloudflare / Wrangler
+.wrangler/
+.wranglerignore
+wrangler.toml
+requirements.txt
+build_script.py
+
+# Project Outputs
+outputs/
+temp/
+*.mp4
+*.jpg
+*.png
+*.mp3
+
+# Project specific
+demo-frontend/
+prompt.md
+LICENSE
+README.md

@@ -431,6 +431,7 @@ dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "python-multipart" },
+    { name = "uvicorn" },
     { name = "workers-py" },
 ]
 
@@ -438,7 +439,6 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "ruff" },
-    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -447,6 +447,7 @@ requires-dist = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "python-multipart" },
+    { name = "uvicorn" },
     { name = "workers-py" },
 ]
 
@@ -454,5 +455,4 @@ requires-dist = [
 dev = [
     { name = "pytest" },
     { name = "ruff" },
-    { name = "uvicorn" },
 ]

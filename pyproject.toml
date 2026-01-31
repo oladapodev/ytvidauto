@@ -10,6 +10,7 @@ dependencies = [
     "httpx",
     "python-multipart",
     "workers-py",
+    "uvicorn",
 ]
 
 [project.scripts]
@@ -23,7 +24,6 @@ package = true
 dev = [
     "pytest",
     "ruff",
-    "uvicorn",
 ]
 
 [build-system]
