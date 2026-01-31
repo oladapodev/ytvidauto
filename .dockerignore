@@ -33,7 +33,6 @@ temp/
 *.mp3
 
 # Project specific
-demo-frontend/
 prompt.md
 LICENSE
 README.md
