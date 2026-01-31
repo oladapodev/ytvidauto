@@ -1,4 +1,9 @@
-const API_BASE = 'http://localhost:8000';
+let API_BASE = 'https://molecular-janeen-davidson0071-394ced15.koyeb.app';
+
+if (window.location.hostname !== '' && window.location.protocol !== 'file:') {
+    API_BASE = window.location.origin;
+}
+
 let selectedFiles = []; // State to hold multiple files cumulatively
 
 document.addEventListener('DOMContentLoaded', () => {

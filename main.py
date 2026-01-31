@@ -4,6 +4,8 @@ except ImportError:
     uvicorn = None
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from api.endpoints.video_generation_endpoint import router as video_router
 from core.config.settings import settings
 
@@ -30,8 +32,11 @@ def create_application() -> FastAPI:
     # Include API routers
     app.include_router(video_router)
 
-    @app.get("/", tags=["Health Check"])
-    async def root():
+    # Mount static assets
+    app.mount("/assets", StaticFiles(directory="demo-frontend/assets"), name="assets")
+
+    @app.get("/api/info", tags=["Health Check"])
+    async def api_info():
         """
         Simple health check endpoint.
         """
@@ -40,6 +45,13 @@ def create_application() -> FastAPI:
             "version": settings.APP_VERSION,
             "status": "online"
         }
+
+    @app.get("/", tags=["UI"])
+    async def serve_frontend():
+        """
+        Serve the frontend UI.
+        """
+        return FileResponse("demo-frontend/index.html")
 
     return app
 
