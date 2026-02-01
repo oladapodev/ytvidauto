@@ -6,15 +6,17 @@ A production-ready FastAPI application for generating automated slideshow videos
 
 - **Asynchronous Generation**: Long-running video generation tasks are handled in the background.
 - **Flexible Inputs**: Accepts audio and images either as local file uploads or remote URLs.
-- **Cinematic Effects**: Automatically applies alternating zoom-in and zoom-out effects to images.
-- **Auto-Sync**: Images are automatically timed to span the entire duration of the provided audio.
+- **Styles & Effects**: Choose from 5 cinematic styles including Zoom, Pan, Scroll, and Dynamic Mix.
+- **Custom Orientation**: Generate videos in Landscape (16:9) or Portrait (9:16) modes.
+- **Dynamic Timing**: Customize slide duration or auto-sync to audio length.
+- **Auto-Cleanup**: Automatically manages temporary files to keep storage clean.
 - **Clean Architecture**: Follows strict separation of concerns and descriptive naming conventions.
 
 ## Tech Stack
 
 - **Python**: 3.12+
 - **Framework**: FastAPI 0.128.0
-- **Video Engine**: MoviePy 2.2.1
+- **Video Engine**: FFmpeg (via subprocess)
 - **Management**: uv (Package/Environment Management)
 - **Validation**: Pydantic 2.12.5
 - **Networking**: httpx 0.27.0
@@ -24,7 +26,8 @@ A production-ready FastAPI application for generating automated slideshow videos
 ### Prerequisites
 
 - [uv](https://github.com/astral-sh/uv) installed on your system.
-- FFmpeg installed (required by MoviePy).
+- FFmpeg installed and in your PATH.
+- Docker (optional, for containerized run).
 
 ### Installation
 
@@ -43,10 +46,16 @@ A production-ready FastAPI application for generating automated slideshow videos
 
 Start the FastAPI server:
 ```bash
-uv run uvicorn src.main:app --reload
+uv run uvicorn main:app --reload
 ```
 The API will be available at `http://localhost:8000`. 
 Interactive documentation is available at `http://localhost:8000/docs`.
+
+**Using Docker:**
+```bash
+docker build -t ytvidauto:latest .
+docker run -p 8000:8000 ytvidauto:latest
+```
 
 ### Running Tests
 
@@ -70,6 +79,14 @@ uv run ruff check .
 **Multipart Form Data:**
 - `audio`: (File or URL String)
 - `images`: (Multiple Files or URL Strings)
+- `style`: (Integer) Style ID (1-5)
+  - 1: Classic Zoom
+  - 2: Cinematic Pan
+  - 3: Vertical Scroll
+  - 4: Static
+  - 5: Dynamic Mix
+- `orientation`: (String) "landscape" or "portrait"
+- `image_duration`: (Float) Seconds per image (optional)
 
 **Response:**
 ```json
@@ -101,16 +118,17 @@ uv run ruff check .
 
 ```text
 ytvidauto/
-├── src/
-│   ├── api/
-│   │   ├── endpoints/          # API routes (FastAPI)
-│   │   ├── models/             # Pydantic schemas
-│   │   └── dependencies/       # Dependency injection
-│   ├── core/
-│   │   ├── config/             # App settings (Pydantic-settings)
-│   │   └── utilities/          # Core logic (MoviePy, File Fetching)
-│   └── main.py                 # App entry point
-├── tests/                      # Pytest suite
-├── pyproject.toml              # uv configuration
+├── api/
+│   ├── endpoints/          # API routes (FastAPI)
+│   ├── models/             # Pydantic schemas
+│   └── dependencies/       # Dependency injection
+├── core/
+│   ├── config/             # App settings & Video Styles
+│   └── utilities/          # Core logic (Video Generator, File Fetching)
+├── demo-frontend/          # Web UI
+├── main.py                 # App entry point
+├── tests/                  # Pytest suite
+├── Dockerfile              # Container config
+├── pyproject.toml          # uv configuration
 └── README.md
 ```

@@ -118,6 +118,17 @@ async function handleGenerate() {
         urls.forEach(url => formData.append('images', url));
     }
 
+    // 3. Get Settings
+    const styleId = document.getElementById('style-select').value;
+    const orientation = document.getElementById('orientation-select').value;
+    const duration = document.getElementById('image-duration').value;
+
+    formData.append('style', styleId);
+    formData.append('orientation', orientation);
+    if (duration) {
+        formData.append('image_duration', duration);
+    }
+
     document.getElementById('input-section').classList.add('hidden');
     document.getElementById('status-section').classList.remove('hidden');
 

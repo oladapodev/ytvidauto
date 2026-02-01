@@ -3,6 +3,7 @@ import subprocess
 import uuid
 from typing import List
 from core.config.settings import settings
+from core.config.video_styles import get_style_filter
 
 
 class VideoGenerationTaskProcessor:
@@ -26,7 +27,13 @@ class VideoGenerationTaskProcessor:
             return 30.0 # Fallback default
 
     def generate_video_from_audio_and_images(
-        self, audio_path: str, image_paths: List[str], output_path: str
+        self, 
+        audio_path: str, 
+        image_paths: List[str], 
+        output_path: str, 
+        style_id: int = 1,
+        orientation: str = "landscape",
+        image_duration: float = 0.0
     ) -> str:
         """
         Generates video by creating individual video segments for each image and concatenating them.
@@ -42,34 +49,50 @@ class VideoGenerationTaskProcessor:
                 raise RuntimeError("Subprocess (FFmpeg) not supported on Cloudflare Workers. Use a traditional server environment.")
 
             total_duration = self.get_audio_duration(audio_path)
-            # Ensure duration is at least 1 second per image to prevent FFmpeg errors
-            if total_duration < len(image_paths):
-                total_duration = float(len(image_paths))
-                
-            duration_per_image = total_duration / len(image_paths)
+
+            if image_duration > 0:
+                # Use user-specified duration (seconds per slide)
+                duration_per_image = image_duration
+                # Note: If duration_per_image * count > audio duration, audio loops or stops?
+                # For this implementation, we will match audio length in final step if possible, 
+                # OR if user specified explicit duration, we might want video to define length.
+                # Let's keep existing logic: 'shortest' will cut video if audio is shorter.
+                # Ideally, if user sets duration, they want that duration.
+                # We'll handle this in the final concat command.
+            else:
+                # Calculate based on audio duration
+                if total_duration < len(image_paths):
+                    total_duration = float(len(image_paths))
+                duration_per_image = total_duration / len(image_paths)
+
             total_frames = int(duration_per_image * self.fps)
             
-            print(f"DEBUG: Generating {len(image_paths)} segments. Duration per img: {duration_per_image}s")
+            # Determine resolution based on orientation
+            if orientation.lower() == "portrait":
+                width, height = 1080, 1920
+                scale_crop_filter = f"scale={width*2}:{height*2}:force_original_aspect_ratio=increase,crop={width*2}:{height*2}" # High-res intermediate
+            else:
+                # Default Landscape
+                width, height = 1920, 1080
+                scale_crop_filter = f"scale={width*2}:{height*2}:force_original_aspect_ratio=increase,crop={width*2}:{height*2}"
+
+            print(f"DEBUG: Generating {len(image_paths)} segments. Duration per img: {duration_per_image}s. Dim: {width}x{height}")
 
             # 1. Generate a video segment for each image
             for i, img_path in enumerate(image_paths):
                 segment_path = os.path.join(settings.TEMP_DIR, f"seg_{unique_run_id}_{i}.mp4")
                 
-                is_zoom_in = (i % 2 == 0)
-                if is_zoom_in:
-                    z_val = f"min(zoom+0.0015,1.25)"
-                else:
-                    z_val = f"1.25-(0.25*on/{total_frames})"
+                # Get the filter string based on the selected style and dimensions
+                zoompan_filter = get_style_filter(style_id, total_frames, self.fps, i, width, height)
 
-                # Command to generate a SINGLE segment
-                # We enforce duration using -t
+                
                 cmd = [
                     'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
                     '-loop', '1', '-i', img_path,
                     '-vf', (
-                        f"scale=2560:1440:force_original_aspect_ratio=increase,crop=2560:1440," # High-res pre-process
+                        f"{scale_crop_filter}," # High-res pre-process
                         f"format=yuv420p,"
-                        f"zoompan=z='{z_val}':d={total_frames}:s=1280x720:fps={self.fps}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)',"
+                        f"{zoompan_filter},"
                         f"setsar=1"
                     ),
                     '-c:v', 'libx264',
@@ -91,18 +114,32 @@ class VideoGenerationTaskProcessor:
 
             # 3. Concatenate segments and add audio
             print(f"DEBUG: Concatenating segments to {output_path}")
+            
             final_cmd = [
                 'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
                 '-f', 'concat', '-safe', '0', '-i', concat_list_path,
                 '-i', audio_path,
                 '-c:v', 'copy', # Stream copy the video (super fast, no re-encode)
                 '-c:a', 'aac', '-b:a', '192k',
-                '-shortest', # Match audio length
-                output_path
             ]
             
+            # Logic: If user specified image duration, we respect that length for video.
+            # Audio behavior:
+            # If audio > video: video ends (or black? -shortest means stop at shortest input).
+            # If audio < video: audio silence (unless -shortest is used, then video cuts).
+            
+            # Implementation Strategy: 
+            # If explicit duration used: Don't use -shortest (let video run full length, audio cuts or silence).
+            # If auto duration (based on audio): Use -shortest (video matches audio).
+            
+            if image_duration <= 0.0:
+                final_cmd.append('-shortest')
+                
+            final_cmd.append(output_path)
+
+            
             subprocess.run(final_cmd, check=True)
-            print(f"DEBUG: Final video ready.")
+            print("DEBUG: Final video ready.")
             
             return output_path
 

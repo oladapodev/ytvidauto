@@ -1,12 +1,12 @@
 import uuid
 import os
-from typing import Dict, List, Union
+from typing import Dict, List
 
-from fastapi import APIRouter, BackgroundTasks, UploadFile, HTTPException, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Request, Form
 from fastapi.responses import FileResponse
 from api.models.request_response_models import VideoGenerationResponse, TaskStatusModel
 from api.dependencies.shared_dependencies import get_file_fetcher, get_video_processor, get_settings
-from core.config.settings import ApplicationSettings, settings
+from core.config.settings import ApplicationSettings
 from core.utilities.file_fetcher_utility import FileFetcherUtility
 from core.utilities.video_generator_utility import VideoGenerationTaskProcessor
 
@@ -34,7 +34,10 @@ async def run_video_generation_task(
     image_paths_or_urls: List[str],
     file_fetcher: FileFetcherUtility,
     video_processor: VideoGenerationTaskProcessor,
-    settings: ApplicationSettings
+    settings: ApplicationSettings,
+    style_id: int = 1,
+    orientation: str = "landscape",
+    image_duration: float = 0.0
 ):
     """
     Background task to process files and generate the video.
@@ -77,7 +80,10 @@ async def run_video_generation_task(
         video_processor.generate_video_from_audio_and_images(
             audio_path=final_audio_path,
             image_paths=final_image_paths,
-            output_path=output_path
+            output_path=output_path,
+            style_id=style_id,
+            orientation=orientation,
+            image_duration=image_duration
         )
         print(f"DEBUG [Task {task_id}]: FFmpeg processing finished successfully.")
 
@@ -99,7 +105,10 @@ async def generate_video(
     request: Request,
     file_fetcher: FileFetcherUtility = Depends(get_file_fetcher),
     video_processor: VideoGenerationTaskProcessor = Depends(get_video_processor),
-    settings: ApplicationSettings = Depends(get_settings)
+    settings: ApplicationSettings = Depends(get_settings),
+    style: int = Form(1, description="Video style ID: 1=Zoom, 2=Pan, 3=Scroll, 4=Static, 5=Mix"),
+    orientation: str = Form("landscape", description="Video orientation: 'landscape' or 'portrait'"),
+    image_duration: float = Form(0.0, description="Duration per image in seconds (0 = sync to audio)")
 ):
     """
     Endpoint to initiate video generation. 
@@ -124,6 +133,11 @@ async def generate_video(
     image_inputs = form.getlist("images")
     if not image_inputs:
         raise HTTPException(status_code=422, detail="At least one image is required")
+
+    # Style, Orientation, and Duration are injected via Depends/Form above
+    style_id = style
+
+
 
     task_id = str(uuid.uuid4())
     task_registry[task_id] = TaskStatusModel(task_id=task_id, status="pending")
@@ -155,7 +169,10 @@ async def generate_video(
         image_paths_or_urls=processed_images,
         file_fetcher=file_fetcher,
         video_processor=video_processor,
-        settings=settings
+        settings=settings,
+        style_id=style_id,
+        orientation=orientation,
+        image_duration=image_duration
     )
 
     # Return immediate response
