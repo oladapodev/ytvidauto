@@ -24,237 +24,104 @@ class VideoGenerationTaskProcessor:
         try:
             return float(result.stdout.strip())
         except ValueError:
-            return 30.0 # Fallback default
-
-        def generate_video_from_audio_and_images(
-
-            self, 
-
-            audio_path: str, 
-
-            image_paths: List[str], 
-
-            output_path: str, 
-
-            style_id: int = 1,
-
-            orientation: str = "landscape",
-
-            image_duration: float = 0.0,
-
-            image_durations: List[float] = None,
-
-            offsets: List[dict] = None
-
-        ) -> str:
-
-            """
-
-            Generates video by creating individual video segments for each image and concatenating them.
-
-            """
-
-            segment_files = []
-
-            concat_list_path = os.path.join(settings.TEMP_DIR, f"concat_list_{uuid.uuid4()}.txt")
-
-            unique_run_id = str(uuid.uuid4())[:8]
-
-            
-
-            try:
-
-                if not hasattr(subprocess, "run"):
-
-                    raise RuntimeError("Subprocess (FFmpeg) not supported on Cloudflare Workers.")
-
-    
-
-                total_audio_duration = self.get_audio_duration(audio_path)
-
-                
-
-                # --- Duration & Offset Logic ---
-
-                final_image_durations = []
-
-                final_offsets = []
-
-                
-
-                if image_durations and len(image_durations) == len(image_paths):
-
-                    final_image_durations = image_durations
-
-                else:
-
-                    auto_dur = total_audio_duration / len(image_paths) if total_audio_duration > 0 else 3.0
-
-                    final_image_durations = [auto_dur] * len(image_paths)
-
-    
-
-                if offsets and len(offsets) == len(image_paths):
-
-                    final_offsets = offsets
-
-                else:
-
-                    final_offsets = [{"x": 0, "y": 0}] * len(image_paths)
-
-    
-
-                if orientation.lower() == "portrait":
-
-                    width, height = 1080, 1920
-
-                else:
-
-                    width, height = 1920, 1080
-
-                
-
-                scale_factor = 1.25
-
-                inter_w = int(width * scale_factor)
-
-                inter_h = int(height * scale_factor)
-
-    
-
-                for i, img_path in enumerate(image_paths):
-
-                    current_duration = final_image_durations[i]
-
-                    total_frames = int(current_duration * self.fps)
-
-                    if total_frames < 1: total_frames = 1
-
-                    
-
-                                    off = final_offsets[i]
-
-                    
-
-                                    x_off = off.get("x", 0)
-
-                    
-
-                                    y_off = off.get("y", 0)
-
-                    
-
-                                    scale = off.get("scale", 1.0)
-
-                    
-
-                    
-
-                    
-
-                                    segment_path = os.path.join(settings.TEMP_DIR, f"seg_{unique_run_id}_{i}.mp4")
-
-                    
-
-                                    zoompan_filter = get_style_filter(style_id, total_frames, self.fps, i, width, height)
-
-                    
-
-                                    
-
-                    
-
-                                    # Apply the manual offset and scale
-
-                    
-
-                                    # We scale the intermediate image first, then crop it with the offset
-
-                    
-
-                                    # inter_w/inter_h are already 1.25x larger than target.
-
-                    
-
-                                    # We multiply by the user's custom scale.
-
-                    
-
-                                    s_w = int(inter_w * scale)
-
-                    
-
-                                    s_h = int(inter_h * scale)
-
-                    
-
-                                    
-
-                    
-
-                                    pos_filter = f"scale={s_w}:{s_h}:force_original_aspect_ratio=increase,crop={width}:{height}:{s_w/2+x_off}:{s_h/2+y_off}"
-
-                    
-
-                    
-
-    
-
-                    cmd = [
-
-                        'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
-
-                        '-threads', '1', '-loop', '1', '-i', img_path,
-
-                        '-vf', f"{pos_filter},format=yuv420p,{zoompan_filter},setsar=1",
-
-                        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
-
-                        '-pix_fmt', 'yuv420p', '-t', str(current_duration),
-
-                        segment_path
-
-                    ]
-
-                    
-
-                    subprocess.run(cmd, check=True)
-
-                    segment_files.append(segment_path)
-
-    
-
-                with open(concat_list_path, 'w') as f:
-
-                    for seg in segment_files:
-
-                        f.write(f"file '{seg}'\n")
-
-    
-
-                final_cmd = [
-
+            return 30.0  # Fallback default
+
+    def generate_video_from_audio_and_images(
+        self,
+        audio_path: str,
+        image_paths: List[str],
+        output_path: str,
+        style_id: int = 1,
+        orientation: str = "landscape",
+        image_duration: float = 0.0,
+        image_durations: List[float] = None,
+        offsets: List[dict] = None
+    ) -> str:
+        """
+        Generates video by creating individual video segments for each image and concatenating them.
+        """
+        segment_files = []
+        concat_list_path = os.path.join(settings.TEMP_DIR, f"concat_list_{uuid.uuid4()}.txt")
+        unique_run_id = str(uuid.uuid4())[:8]
+
+        try:
+            if not hasattr(subprocess, "run"):
+                raise RuntimeError("Subprocess (FFmpeg) not supported on Cloudflare Workers.")
+
+            total_audio_duration = self.get_audio_duration(audio_path)
+
+            # --- Duration & Offset Logic ---
+            final_image_durations = []
+            final_offsets = []
+
+            if image_durations and len(image_durations) == len(image_paths):
+                final_image_durations = image_durations
+            else:
+                auto_dur = total_audio_duration / len(image_paths) if total_audio_duration > 0 else 3.0
+                final_image_durations = [auto_dur] * len(image_paths)
+
+            if offsets and len(offsets) == len(image_paths):
+                final_offsets = offsets
+            else:
+                final_offsets = [{"x": 0, "y": 0, "scale": 1.0}] * len(image_paths)
+
+            if orientation.lower() == "portrait":
+                width, height = 1080, 1920
+            else:
+                width, height = 1920, 1080
+
+            scale_factor = 1.25
+            inter_w = int(width * scale_factor)
+            inter_h = int(height * scale_factor)
+
+            for i, img_path in enumerate(image_paths):
+                current_duration = final_image_durations[i]
+                total_frames = int(current_duration * self.fps)
+                if total_frames < 1:
+                    total_frames = 1
+
+                off = final_offsets[i]
+                x_off = off.get("x", 0)
+                y_off = off.get("y", 0)
+                scale = off.get("scale", 1.0)
+
+                segment_path = os.path.join(settings.TEMP_DIR, f"seg_{unique_run_id}_{i}.mp4")
+                zoompan_filter = get_style_filter(style_id, total_frames, self.fps, i, width, height)
+
+                # Apply the manual offset and scale
+                s_w = int(inter_w * scale)
+                s_h = int(inter_h * scale)
+
+                pos_filter = f"scale={s_w}:{s_h}:force_original_aspect_ratio=increase,crop={width}:{height}:{s_w/2+x_off}:{s_h/2+y_off}"
+
+                cmd = [
                     'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
-
-                    '-threads', '1', '-f', 'concat', '-safe', '0', '-i', concat_list_path,
-
-                    '-i', audio_path, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
-
+                    '-threads', '1', '-loop', '1', '-i', img_path,
+                    '-vf', f"{pos_filter},format=yuv420p,{zoompan_filter},setsar=1",
+                    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
+                    '-pix_fmt', 'yuv420p', '-t', str(current_duration),
+                    segment_path
                 ]
 
-                
+                subprocess.run(cmd, check=True)
+                segment_files.append(segment_path)
 
-                if not (image_durations or image_duration > 0):
+            with open(concat_list_path, 'w') as f:
+                for seg in segment_files:
+                    f.write(f"file '{seg}'\n")
 
-                    final_cmd.append('-shortest')
+            final_cmd = [
+                'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
+                '-threads', '1', '-f', 'concat', '-safe', '0', '-i', concat_list_path,
+                '-i', audio_path, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+            ]
 
-                    
+            if not (image_durations or image_duration > 0):
+                final_cmd.append('-shortest')
 
-                final_cmd.append(output_path)
-
-                subprocess.run(final_cmd, check=True)
-
-                return output_path
+            final_cmd.append(output_path)
+            subprocess.run(final_cmd, check=True)
+            return output_path
 
         except subprocess.CalledProcessError as e:
             print(f"FFmpeg Error: {e}")
