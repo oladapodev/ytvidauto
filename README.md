@@ -1,5 +1,7 @@
 # YouTube Video Automation API
 
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=ytvidauto&type=git&repository=oladapodev%2Fytvidauto&branch=main&builder=dockerfile&instance_type=free&regions=fra&instances_min=0&autoscaling_sleep_idle_delay=3900)
+
 A production-ready FastAPI application for generating automated slideshow videos with cinematic zoom effects using MoviePy 2.x.
 
 ## Features
