@@ -4,11 +4,16 @@ A production-ready FastAPI application for generating automated slideshow videos
 
 ## Features
 
+- **Interactive Canvas Editor**:
+  - **Precision Dragging**: Adjust image positioning directly on the 16:9/9:16 canvas.
+  - **Scale Control**: Resize images using the mouse wheel or the sidebar slider to perfectly fit your composition.
+  - **Real-time Synchronization**: Image durations automatically adjust to match audio length, with fluid resizing between neighbors.
+- **Variable Timing**: Supports custom durations for every single image in the slideshow via the new `timeline_data` API parameter.
+- **Low-Resource Optimized**: Engineered for 0.1 vCPU / 512MB RAM environments (like Koyeb Free) using optimized FFmpeg scaling (1.25x) and single-threaded processing.
 - **Asynchronous Generation**: Long-running video generation tasks are handled in the background.
 - **Flexible Inputs**: Accepts audio and images either as local file uploads or remote URLs.
 - **Styles & Effects**: Choose from 5 cinematic styles including Zoom, Pan, Scroll, and Dynamic Mix.
 - **Custom Orientation**: Generate videos in Landscape (16:9) or Portrait (9:16) modes.
-- **Dynamic Timing**: Customize slide duration or auto-sync to audio length.
 - **Auto-Cleanup**: Automatically manages temporary files to keep storage clean.
 - **Clean Architecture**: Follows strict separation of concerns and descriptive naming conventions.
 
@@ -77,16 +82,19 @@ uv run ruff check .
 **POST** `/video/generate-video`
 
 **Multipart Form Data:**
-- `audio`: (File or URL String)
-- `images`: (Multiple Files or URL Strings)
-- `style`: (Integer) Style ID (1-5)
+- `audio`: (File or URL String) **Required**.
+- `images`: (Multiple Files or URL Strings) **Required**.
+- `timeline_data`: (JSON String) **Optional**. Allows precise control over duration and order.
+  - Format: `[{"file_index": 0, "duration": 5.0}, {"file_index": 1, "duration": 2.5}]`
+  - `file_index` refers to the 0-based index of the file in the `images` array.
+- `style`: (Integer) Style ID (1-5, Default: 1)
   - 1: Classic Zoom
   - 2: Cinematic Pan
   - 3: Vertical Scroll
   - 4: Static
   - 5: Dynamic Mix
-- `orientation`: (String) "landscape" or "portrait"
-- `image_duration`: (Float) Seconds per image (optional)
+- `orientation`: (String) "landscape" or "portrait" (Default: "landscape")
+- `image_duration`: (Float) Global seconds per image. Ignored if `timeline_data` is provided.
 
 **Response:**
 ```json
@@ -97,6 +105,14 @@ uv run ruff check .
   "download_url": null
 }
 ```
+
+## Performance Optimizations for Free Tiers (Koyeb/Heroku)
+
+This application is specifically tuned for environments with limited RAM (512MB) and CPU (0.1 vCPU):
+1. **Intermediate Scaling**: Uses 1.25x scaling for internal processing instead of 2x or 4K, drastically reducing memory pressure.
+2. **Streaming Uploads**: Files are streamed to disk in 1MB chunks to avoid loading large images or audio files entirely into RAM.
+3. **Single-Threaded FFmpeg**: Limits FFmpeg to `-threads 1` to prevent CPU throttling and OOM kills.
+4. **Ultrafast Presets**: Prioritizes rendering speed to avoid timeout errors on cloud platforms.
 
 ### 2. Check Task Status
 **GET** `/video/status/{task_id}`

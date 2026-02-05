@@ -1,4 +1,5 @@
 import uuid
+import os
 from pathlib import Path
 from typing import Union, List
 
@@ -85,16 +86,23 @@ class FileFetcherUtility:
             extension = Path(filename).suffix if filename else ""
             target_path = self.temp_dir / f"{unique_filename}{extension}"
             
-            # Read and write content
-            if hasattr(input_source, "read") and callable(input_source.read):
-                content = await input_source.read()
-                if len(content) > MAX_SIZE:
-                    raise ValueError(f"Uploaded file exceeds size limit of {MAX_SIZE/1e6}MB")
-            else:
-                 raise ValueError(f"Input object does not have a readable content stream: {type(input_source)}")
-                
-            with open(target_path, "wb") as buffer:
-                buffer.write(content)
+            # Optimization: Stream the file to disk in chunks instead of await input_source.read()
+            # which loads the entire file into RAM.
+            downloaded_size = 0
+            try:
+                with open(target_path, "wb") as buffer:
+                    while True:
+                        chunk = await input_source.read(1024 * 1024) # 1MB chunks
+                        if not chunk:
+                            break
+                        downloaded_size += len(chunk)
+                        if downloaded_size > MAX_SIZE:
+                            raise ValueError(f"Uploaded file exceeds size limit of {MAX_SIZE/1e6}MB")
+                        buffer.write(chunk)
+            except Exception as e:
+                if os.path.exists(target_path):
+                    os.remove(target_path)
+                raise e
             
             return str(target_path.absolute())
 

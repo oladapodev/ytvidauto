@@ -1,17 +1,24 @@
+from pathlib import Path
+import shutil
+import os
+from contextlib import asynccontextmanager
+
 try:
     import uvicorn
 except ImportError:
     uvicorn = None
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+
 from api.endpoints.video_generation_endpoint import router as video_router
 from core.config.settings import settings
 
-from contextlib import asynccontextmanager
-import shutil
-import os
+BASE_PATH = Path(__file__).resolve().parent
+ASSETS_PATH = BASE_PATH / "demo-frontend" / "assets"
+INDEX_PATH = BASE_PATH / "demo-frontend" / "index.html"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -65,7 +72,10 @@ def create_application() -> FastAPI:
     app.include_router(video_router)
 
     # Mount static assets
-    app.mount("/assets", StaticFiles(directory="demo-frontend/assets"), name="assets")
+    if ASSETS_PATH.exists():
+        app.mount("/assets", StaticFiles(directory=str(ASSETS_PATH)), name="assets")
+    else:
+        print(f"Warning: Assets directory not found at {ASSETS_PATH}")
 
     @app.get("/api/info", tags=["Health Check"])
     async def api_info():
@@ -83,7 +93,9 @@ def create_application() -> FastAPI:
         """
         Serve the frontend UI.
         """
-        return FileResponse("demo-frontend/index.html")
+        if INDEX_PATH.exists():
+            return FileResponse(str(INDEX_PATH))
+        return {"error": "Frontend index.html not found"}
 
     return app
 
