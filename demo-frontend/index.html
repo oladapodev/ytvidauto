@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Composer</title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
 
@@ -70,10 +70,6 @@
                     <div id="video-placeholder">
                         <p style="color: #aaa;">Preview not available yet</p>
                     </div>
-                    <!-- Simple Playback Controls Overlay -->
-                    <div style="position:absolute; bottom:1rem; display:flex; gap:1rem;">
-                        <!-- JS Implementation could add play/pause for slideshow preview here -->
-                    </div>
                 </div>
 
                 <!-- Timeline -->
@@ -86,16 +82,13 @@
                         <!-- Video Track -->
                         <div class="track" id="video-track">
                             <div class="track-label">Video</div>
-                            <!-- Timeline Items injected here -->
                             <div id="video-track-content" style="display:flex; height:100%;"></div>
                         </div>
 
                         <!-- Audio Track -->
                         <div class="track" id="audio-track">
                             <div class="track-label">Audio</div>
-                            <div id="audio-clip-container" style="display:flex; height:100%; align-items:center; width:100%;">
-                                <!-- Audio wave placeholder -->
-                            </div>
+                            <div id="audio-clip-container" style="display:flex; height:100%; align-items:center; width:100%;"></div>
                         </div>
                     </div>
                 </div>
@@ -116,6 +109,6 @@
         </div>
     </div>
 
-    <script src="assets/js/app.js"></script>
+    <script src="/assets/js/app.js"></script>
 </body>
 </html>

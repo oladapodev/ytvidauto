@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 from api.endpoints.video_generation_endpoint import router as video_router
 from core.config.settings import settings
 
+# Robust Path Resolution for Docker and Local
 BASE_PATH = Path(__file__).resolve().parent
 ASSETS_PATH = BASE_PATH / "demo-frontend" / "assets"
 INDEX_PATH = BASE_PATH / "demo-frontend" / "index.html"
@@ -25,88 +26,72 @@ async def lifespan(app: FastAPI):
     # Startup: Clean up temp and output directories
     print("Startup: Cleaning up temporary and output directories...")
     try:
-        if settings.TEMP_DIR.exists():
-            shutil.rmtree(settings.TEMP_DIR)
-        if settings.OUTPUT_DIR.exists():
-            for filename in os.listdir(settings.OUTPUT_DIR):
-                file_path = settings.OUTPUT_DIR / filename
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-        
-        # Re-create directories
+        # Re-create directories using settings paths
         settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)
         settings.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Cleanup logic
+        for path in [settings.TEMP_DIR, settings.OUTPUT_DIR]:
+            for filename in os.listdir(path):
+                file_path = path / filename
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception:
+                    pass
         print("Startup: Cleanup complete.")
     except Exception as e:
         print(f"Startup: Cleanup failed: {e}")
     
     yield
-    
-    # Shutdown: (Optional) could clean again, but usually we keep outputs
-    pass
 
 def create_application() -> FastAPI:
-    """
-    Factory function to create and configure the FastAPI application.
-    """
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
-        description="An automated API for generating slideshow videos from images and audio.",
+        description="Automated Video Slideshow API",
         lifespan=lifespan
     )
 
-    # Configure CORS (Cross-Origin Resource Sharing)
-    # Allows requests from different domains, useful for frontend integrations
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # In production, specify actual domains
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # Include API routers
     app.include_router(video_router)
 
-    # Mount static assets
+    # Static Files Mounting
     if ASSETS_PATH.exists():
         app.mount("/assets", StaticFiles(directory=str(ASSETS_PATH)), name="assets")
     else:
-        print(f"Warning: Assets directory not found at {ASSETS_PATH}")
+        # Fallback for Docker environments where CWD might be different
+        docker_assets = Path("/app/demo-frontend/assets")
+        if docker_assets.exists():
+            app.mount("/assets", StaticFiles(directory=str(docker_assets)), name="assets")
 
-    @app.get("/api/info", tags=["Health Check"])
+    @app.get("/api/info")
     async def api_info():
-        """
-        Simple health check endpoint.
-        """
-        return {
-            "app": settings.APP_NAME,
-            "version": settings.APP_VERSION,
-            "status": "online"
-        }
+        return {"app": settings.APP_NAME, "status": "online"}
 
-    @app.get("/", tags=["UI"])
+    @app.get("/")
     async def serve_frontend():
-        """
-        Serve the frontend UI.
-        """
+        # Prefer the resolved INDEX_PATH
         if INDEX_PATH.exists():
             return FileResponse(str(INDEX_PATH))
+        # Fallback
+        docker_index = Path("/app/demo-frontend/index.html")
+        if docker_index.exists():
+            return FileResponse(str(docker_index))
         return {"error": "Frontend index.html not found"}
 
     return app
 
-# The app instance to be used by the ASGI server (uvicorn)
 app = create_application()
 
 if __name__ == "__main__" and uvicorn:
-    # Start the application manually for debugging
-    uvicorn.run(
-        "main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG
-    )
+    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
