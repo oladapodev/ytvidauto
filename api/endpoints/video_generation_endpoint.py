@@ -89,10 +89,10 @@ async def generate_video(
     file_fetcher: FileFetcherUtility = Depends(get_file_fetcher),
     video_processor: VideoGenerationTaskProcessor = Depends(get_video_processor),
     settings: ApplicationSettings = Depends(get_settings),
-    style: int = Form(1),
-    orientation: str = Form("landscape"),
-    image_duration: float = Form(0.0),
-    timeline_data: str = Form(None)
+    style: int = Form(1, description="Style ID (1: Zoom, 2: Pan, 3: Scroll, 4: Static, 5: Mix)"),
+    orientation: str = Form("landscape", description="Video aspect ratio: 'landscape' or 'portrait'"),
+    image_duration: float = Form(0.0, description="Fallback constant duration per image (ignored if timeline_data is used)"),
+    timeline_data: str = Form(None, description="JSON string array of timeline entries: [{'file_index': 0, 'duration': 5.0, 'x_offset': 0, 'y_offset': 0, 'scale': 1.0}, ...]")
 ):
     if "env" in request.scope:
         return {"task_id": "error", "status": "not_supported"}

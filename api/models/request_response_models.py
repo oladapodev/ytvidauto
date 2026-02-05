@@ -2,6 +2,17 @@ from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 
 
+class TimelineEntry(BaseModel):
+    """
+    Represents an individual item in the video timeline.
+    """
+    file_index: int = Field(..., description="The 0-based index of the image in the 'images' upload list.")
+    duration: float = Field(..., description="Duration in seconds for this image segment.")
+    x_offset: float = Field(0.0, description="Horizontal shift of the image on the canvas.")
+    y_offset: float = Field(0.0, description="Vertical shift of the image on the canvas.")
+    scale: float = Field(1.0, description="Scaling factor (zoom) for the image.")
+
+
 class VideoGenerationResponse(BaseModel):
     """
     Response model returned immediately after a video generation task is queued.
@@ -23,15 +34,14 @@ class TaskStatusModel(BaseModel):
     error_message: Optional[str] = None
 
 
-# Note: VideoGenerationRequest with Union[UploadFile, str] is tricky for standard Pydantic models
-# because UploadFile is a FastAPI-specific class meant for Form data, not JSON bodies.
-# We define it here for conceptual alignment with the requirements, but the endpoint
-# will handle the actual parsing of Multipart/Form data.
-
 class VideoGenerationRequest(BaseModel):
     """
-    Conceptual model for the request. 
-    In practice, FastAPI handles UploadFile via Form parameters.
+    Schema for the video generation request parameters.
+    Note: Standard Multipart form data is handled by Form() fields in the endpoint.
     """
     audio: Any = Field(..., description="URL string or an uploaded audio file.")
     images: List[Any] = Field(..., description="List of URL strings or uploaded image files.")
+    style: int = Field(1, ge=1, le=5, description="Style ID (1: Zoom, 2: Pan, 3: Scroll, 4: Static, 5: Mix)")
+    orientation: str = Field("landscape", description="Video aspect ratio: 'landscape' or 'portrait'")
+    image_duration: float = Field(0.0, description="Fallback constant duration per image (ignored if timeline_data is used)")
+    timeline_data: Optional[str] = Field(None, description="JSON string array of TimelineEntry objects.")
