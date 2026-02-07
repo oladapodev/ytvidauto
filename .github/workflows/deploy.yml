@@ -33,17 +33,34 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: 'Deploy to Azure Container Instance'
-      run: |
-        az container create \
-          --resource-group oladapodev \
-          --name ytvidauto-serverless \
-          --image ${{ secrets.ACR_LOGIN_SERVER }}/ytvidauto:latest \
-          --cpu 1 \
-          --memory 1.5 \
-          --registry-login-server ${{ secrets.ACR_LOGIN_SERVER }} \
-          --registry-username ${{ secrets.ACR_USERNAME }} \
-          --registry-password ${{ secrets.ACR_PASSWORD }} \
-          --dns-name-label yt-video-app-dev \
-          --ports 8000 \
-          --environment-variables PORT=8000
+        - name: 'Deploy to Azure Container Instance'
+
+          run: |
+
+            az container create \
+
+              --resource-group oladapodev \
+
+              --name ytvidauto-serverless \
+
+              --image ${{ secrets.ACR_LOGIN_SERVER }}/ytvidauto:latest \
+
+              --cpu 1 \
+
+              --memory 1.5 \
+
+              --os-type Linux \
+
+              --registry-login-server ${{ secrets.ACR_LOGIN_SERVER }} \
+
+              --registry-username ${{ secrets.ACR_USERNAME }} \
+
+              --registry-password ${{ secrets.ACR_PASSWORD }} \
+
+              --dns-name-label yt-video-app-dev \
+
+              --ports 8000 \
+
+              --environment-variables PORT=8000
+
+    
