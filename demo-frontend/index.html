@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Composer</title>
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
+
 <body>
 
     <div id="app-container">
@@ -26,7 +28,7 @@
                         <option value="portrait">Portrait (9:16)</option>
                     </select>
                 </div>
-                
+
                 <div class="setting-group">
                     <label>Motion Style</label>
                     <select id="style-select">
@@ -52,11 +54,42 @@
                 </div>
 
                 <div class="setting-group">
+                    <label>Caption Font</label>
+                    <select id="caption-font-select">
+                        <option value="None">None (No Captions)</option>
+                        <option value="Titan One">Titan One</option>
+                        <option value="Ranchers">Ranchers</option>
+                        <option value="Rampart One">Rampart One</option>
+                        <option value="Permanent Marker">Permanent Marker</option>
+                        <option value="Open Sans">Open Sans</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Luckiest Guy">Luckiest Guy</option>
+                        <option value="Knewave">Knewave</option>
+                        <option value="Jua">Jua</option>
+                        <option value="Creepster">Creepster</option>
+                        <option value="Caveat">Caveat</option>
+                        <option value="Bungee">Bungee</option>
+                        <option value="Bebas Neue">Bebas Neue</option>
+                        <option value="Bangers">Bangers</option>
+                        <option value="Bakbak One">Bakbak One</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label>Caption Style</label>
+                    <select id="caption-style-select">
+                        <option value="standard">Standard (Sequential)</option>
+                        <option value="typing">Typing (Karaoke)</option>
+                        <option value="popping">Popping (Bounce animation)</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
                     <label>Images</label>
                     <button id="add-images-btn" class="btn btn-secondary" style="width:100%">+ Add Media</button>
                     <input type="file" id="images-file-input" accept="image/*" multiple hidden>
                 </div>
-                
+
                 <div style="margin-top:auto; font-size:0.75rem; color:#888;">
                     Drag edges of clips in timeline to resize duration.
                 </div>
@@ -64,7 +97,7 @@
 
             <!-- Editor View -->
             <div style="flex:1; display:flex; flex-direction:column; gap:1rem; min-width:0;">
-                
+
                 <!-- Preview Window -->
                 <div id="preview-area" class="glass-panel">
                     <div id="video-placeholder">
@@ -88,7 +121,8 @@
                         <!-- Audio Track -->
                         <div class="track" id="audio-track">
                             <div class="track-label">Audio</div>
-                            <div id="audio-clip-container" style="display:flex; height:100%; align-items:center; width:100%;"></div>
+                            <div id="audio-clip-container"
+                                style="display:flex; height:100%; align-items:center; width:100%;"></div>
                         </div>
                     </div>
                 </div>
@@ -102,7 +136,7 @@
         <div class="spinner"></div>
         <h2 id="status-text" style="margin-bottom:0.5rem;">Processing...</h2>
         <p id="task-id-display" style="color:#666; font-size:0.8rem; margin-bottom:1.5rem;"></p>
-        
+
         <div id="result-actions" class="hidden" style="display:flex; gap:1rem;">
             <a id="download-link" href="#" class="btn btn-primary" target="_blank">Download Video</a>
             <button id="reset-btn" class="btn btn-secondary">Close</button>
@@ -111,4 +145,5 @@
 
     <script src="/assets/js/app.js"></script>
 </body>
+
 </html>

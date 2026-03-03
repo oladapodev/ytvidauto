@@ -35,7 +35,10 @@ class VideoGenerationTaskProcessor:
         orientation: str = "landscape",
         image_duration: float = 0.0,
         image_durations: List[float] = None,
-        offsets: List[dict] = None
+        offsets: List[dict] = None,
+        srt_path: str = None,
+        caption_font: str = "None",
+        caption_style: str = "standard"
     ) -> str:
         """
         Generates video by creating individual video segments for each image and concatenating them.
@@ -113,8 +116,18 @@ class VideoGenerationTaskProcessor:
             final_cmd = [
                 'ffmpeg', '-y', '-hide_banner', '-loglevel', 'error',
                 '-threads', '1', '-f', 'concat', '-safe', '0', '-i', concat_list_path,
-                '-i', audio_path, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+                '-i', audio_path
             ]
+
+            if srt_path and caption_font and str(caption_font).lower() != "none" and os.path.exists(srt_path):
+                # Subtitles require re-encoding during the final concat step
+                fonts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts')).replace('\\', '/')
+                safe_srt_path = os.path.abspath(srt_path).replace('\\', '/').replace(':', '\\:') # Windows paths escape for ffmpeg filter
+                final_cmd.extend(['-vf', f"subtitles='{safe_srt_path}':fontsdir='{fonts_dir}'", '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28'])
+            else:
+                final_cmd.extend(['-c:v', 'copy'])
+                
+            final_cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
 
             if not (image_durations or image_duration > 0):
                 final_cmd.append('-shortest')
