@@ -44,9 +44,9 @@ A production-ready FastAPI application for generating automated slideshow videos
    cd ytvidauto
    ```
 
-2. Sync dependencies and set up the virtual environment:
+2. Install dependencies:
    ```bash
-   uv sync
+   py -m pip install fastapi uvicorn pydantic httpx python-multipart workers-py aiofiles
    ```
 
 ### Running the Application
@@ -55,7 +55,7 @@ Start the FastAPI server:
 ```bash
 # Ensure your deepgram API key is exported if you want captions
 # export DEEPGRAM_API_KEY="your-api-key-here"
-uv run uvicorn main:app --reload
+py -m uvicorn main:app --reload
 ```
 The API will be available at `http://localhost:8000`. 
 Interactive documentation is available at `http://localhost:8000/docs`.

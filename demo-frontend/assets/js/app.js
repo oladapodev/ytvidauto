@@ -1,7 +1,4 @@
 let API_BASE = 'https://molecular-janeen-davidson0071-394ced15.koyeb.app';
-if (window.location.hostname !== '' && window.location.protocol !== 'file:') {
-    API_BASE = window.location.origin;
-}
 
 // Global State
 let state = {
