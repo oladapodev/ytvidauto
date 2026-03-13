@@ -44,18 +44,16 @@ A production-ready FastAPI application for generating automated slideshow videos
    cd ytvidauto
    ```
 
-2. Install dependencies:
+2. Sync dependencies and set up the virtual environment:
    ```bash
-   py -m pip install fastapi uvicorn pydantic httpx python-multipart workers-py aiofiles
+   uv sync
    ```
 
 ### Running the Application
 
 Start the FastAPI server:
 ```bash
-# Ensure your deepgram API key is exported if you want captions
-# export DEEPGRAM_API_KEY="your-api-key-here"
-py -m uvicorn main:app --reload
+uv run uvicorn main:app --reload
 ```
 The API will be available at `http://localhost:8000`. 
 Interactive documentation is available at `http://localhost:8000/docs`.
@@ -97,8 +95,6 @@ uv run ruff check .
   - 3: Vertical Scroll
   - 4: Static
   - 5: Dynamic Mix
-- `caption_font`: (String) **Optional**. Adds Deepgram synced captions burned directly into the video. Requires `DEEPGRAM_API_KEY` to be set in environment. Set to `"None"` to disable. Selectable options include: "Titan One", "Ranchers", "Open Sans", "Montserrat", etc.
-- `caption_style`: (String) **Optional**. Subtitle animation style applied via ASS formatting. Options: `"standard"`, `"typing"` (Karaoke), or `"popping"` (Bounce scaling).
 - `orientation`: (String) "landscape" or "portrait" (Default: "landscape")
 - `image_duration`: (Float) Global seconds per image. Ignored if `timeline_data` is provided.
 

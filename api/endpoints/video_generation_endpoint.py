@@ -10,7 +10,6 @@ from api.dependencies.shared_dependencies import get_file_fetcher, get_video_pro
 from core.config.settings import ApplicationSettings
 from core.utilities.file_fetcher_utility import FileFetcherUtility
 from core.utilities.video_generator_utility import VideoGenerationTaskProcessor
-from core.utilities.deepgram_stt import DeepgramSTTUtility, get_deepgram_stt
 
 router = APIRouter(prefix="/video", tags=["Video Generation"])
 
@@ -38,10 +37,7 @@ async def run_video_generation_task(
     orientation: str = "landscape",
     image_duration: float = 0.0,
     timeline_durations: List[float] = None,
-    timeline_offsets: List[dict] = None,
-    caption_font: str = "None",
-    caption_style: str = "standard",
-    deepgram_utility: DeepgramSTTUtility = None
+    timeline_offsets: List[dict] = None
 ):
     try:
         task_registry[task_id].status = "processing"
@@ -61,11 +57,6 @@ async def run_video_generation_task(
                 p = await file_fetcher.fetch_and_save_resource(img)
                 final_image_paths.append(p)
 
-        # 2.5 Generate Subtitles (if requested)
-        srt_path = None
-        if caption_font and str(caption_font).lower() != "none" and deepgram_utility:
-            srt_path = await deepgram_utility.generate_srt(final_audio_path, caption_font=caption_font, caption_style=caption_style)
-
         # 3. Output path
         output_filename = f"video_{task_id}.mp4"
         output_path = str(settings.OUTPUT_DIR / output_filename)
@@ -79,10 +70,7 @@ async def run_video_generation_task(
             orientation=orientation,
             image_duration=image_duration,
             image_durations=timeline_durations,
-            offsets=timeline_offsets,
-            srt_path=srt_path,
-            caption_font=caption_font,
-            caption_style=caption_style
+            offsets=timeline_offsets
         )
 
         task_registry[task_id].status = "completed"
@@ -101,13 +89,10 @@ async def generate_video(
     file_fetcher: FileFetcherUtility = Depends(get_file_fetcher),
     video_processor: VideoGenerationTaskProcessor = Depends(get_video_processor),
     settings: ApplicationSettings = Depends(get_settings),
-    deepgram_utility: DeepgramSTTUtility = Depends(get_deepgram_stt),
     style: int = Form(1, description="Style ID (1: Zoom, 2: Pan, 3: Scroll, 4: Static, 5: Mix)"),
     orientation: str = Form("landscape", description="Video aspect ratio: 'landscape' or 'portrait'"),
     image_duration: float = Form(0.0, description="Fallback constant duration per image (ignored if timeline_data is used)"),
-    timeline_data: str = Form(None, description="JSON string array of timeline entries: [{'file_index': 0, 'duration': 5.0, 'x_offset': 0, 'y_offset': 0, 'scale': 1.0}, ...]"),
-    caption_font: str = Form("None", description="Font name for deepgram subtitles (e.g. 'Titan One'). Pass 'None' to disable."),
-    caption_style: str = Form("standard", description="Subtitle animation style: 'standard', 'typing', or 'popping'")
+    timeline_data: str = Form(None, description="JSON string array of timeline entries: [{'file_index': 0, 'duration': 5.0, 'x_offset': 0, 'y_offset': 0, 'scale': 1.0}, ...]")
 ):
     if "env" in request.scope:
         return {"task_id": "error", "status": "not_supported"}
@@ -163,10 +148,7 @@ async def generate_video(
         orientation=orientation,
         image_duration=image_duration,
         timeline_durations=final_durations,
-        timeline_offsets=final_offsets,
-        caption_font=caption_font,
-        caption_style=caption_style,
-        deepgram_utility=deepgram_utility
+        timeline_offsets=final_offsets
     )
 
     return VideoGenerationResponse(task_id=task_id, status="pending", poll_url=f"/video/status/{task_id}")

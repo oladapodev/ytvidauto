@@ -1,10 +1,13 @@
 let API_BASE = 'https://molecular-janeen-davidson0071-394ced15.koyeb.app';
+if (window.location.hostname !== '' && window.location.protocol !== 'file:') {
+    API_BASE = window.location.origin;
+}
 
 // Global State
 let state = {
     audioFile: null,
     audioDuration: 0,
-    images: [],
+    images: [], 
     scale: 30, // px per second
     currentTime: 0,
     selectedIndex: -1,
@@ -179,8 +182,8 @@ function handleCanvasMouseDown(e) {
 }
 
 function formatTime(s) {
-    const m = Math.floor(s / 60);
-    return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+    const m = Math.floor(s/60);
+    return `${m}:${Math.floor(s%60).toString().padStart(2,'0')}`;
 }
 
 async function handleGenerate() {
@@ -194,8 +197,6 @@ async function handleGenerate() {
     formData.append('timeline_data', JSON.stringify(timeline));
     formData.append('orientation', state.orientation);
     formData.append('style', document.getElementById('style-select').value);
-    formData.append('caption_font', document.getElementById('caption-font-select').value);
-    formData.append('caption_style', document.getElementById('caption-style-select').value);
     document.getElementById('status-overlay').classList.remove('hidden');
     try {
         const res = await fetch(`${API_BASE}/video/generate-video`, { method: 'POST', body: formData });

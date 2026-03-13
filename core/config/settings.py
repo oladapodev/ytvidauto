@@ -22,7 +22,6 @@ class ApplicationSettings(BaseModel):
     # API Configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    DEEPGRAM_API_KEY: str = "bacf401594d75cb55a8c5714130c8073c1a8f3d9"
 
     # Utility Limits
     HTTP_FETCH_TIMEOUT_SECONDS: int = 60
