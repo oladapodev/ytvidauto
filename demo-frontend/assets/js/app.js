@@ -40,6 +40,9 @@ function setupEventListeners() {
         }
     };
 
+    document.getElementById('bulk-duration-input').onchange = handleBulkDurationChange;
+    document.getElementById('reverse-timeline-btn').onclick = handleReverseTimeline;
+
     document.getElementById('generate-btn').onclick = handleGenerate;
     document.getElementById('reset-btn').onclick = () => document.getElementById('status-overlay').classList.add('hidden');
 
@@ -80,6 +83,34 @@ function syncDurationsToAudio() {
     const currentTotal = state.images.reduce((sum, img) => sum + img.duration, 0);
     const factor = state.audioDuration / currentTotal;
     state.images.forEach(img => img.duration *= factor);
+}
+
+function handleBulkDurationChange(e) {
+    const val = parseFloat(e.target.value);
+    if (isNaN(val) || val <= 0) return;
+    state.images.forEach(img => img.duration = val);
+    
+    // We update audio duration too if audio exists, 
+    // or just let it mismatch if user wants specific durations?
+    // In this app, it seems syncDurationsToAudio is used to fit audio.
+    // If user sets bulk duration, we might want to respect it but they might lose sync.
+    // Let's just update and re-render.
+    renderTimeline();
+    updateAudioDurationDisplay();
+}
+
+function handleReverseTimeline() {
+    state.images.reverse();
+    renderTimeline();
+    if (state.selectedIndex !== -1) {
+        // Update selection if needed, or just clear it
+        state.selectedIndex = -1;
+    }
+}
+
+function updateAudioDurationDisplay() {
+    const total = state.images.reduce((sum, img) => sum + img.duration, 0);
+    document.getElementById('total-duration').innerText = formatTime(total);
 }
 
 function renderTimeline() {
