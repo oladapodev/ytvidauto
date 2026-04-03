@@ -7,7 +7,7 @@ if (window.location.hostname !== '' && window.location.protocol !== 'file:') {
 let state = {
     audioFile: null,
     audioDuration: 0,
-    images: [], 
+    images: [], // Each: { file, previewUrl, id, duration, x, y, scale, type: 'image'|'video', videoDuration }
     scale: 30, // px per second
     currentTime: 0,
     selectedIndex: -1,
@@ -25,7 +25,7 @@ function setupEventListeners() {
 
     const imagesInput = document.getElementById('images-file-input');
     document.getElementById('add-images-btn').onclick = () => imagesInput.click();
-    imagesInput.onchange = handleImageUpload;
+    imagesInput.onchange = handleMediaUpload;
 
     document.getElementById('orientation-select').onchange = (e) => {
         state.orientation = e.target.value;
@@ -64,18 +64,67 @@ function handleAudioUpload(e) {
     };
 }
 
-function handleImageUpload(e) {
+/**
+ * Handles upload of both image and video files.
+ */
+function handleMediaUpload(e) {
     const files = Array.from(e.target.files);
-    files.forEach(file => {
-        state.images.push({
-            file, previewUrl: URL.createObjectURL(file),
-            id: Math.random().toString(36).substr(2, 9),
-            duration: 3.0, x: 0, y: 0, scale: 1
+    const promises = files.map(file => {
+        return new Promise(resolve => {
+            const type = file.type.startsWith('video/') ? 'video' : 'image';
+            const previewUrl = URL.createObjectURL(file);
+
+            if (type === 'video') {
+                // Probe the video duration from its metadata
+                const vid = document.createElement('video');
+                vid.preload = 'metadata';
+                vid.src = previewUrl;
+                vid.onloadedmetadata = () => {
+                    const dur = isFinite(vid.duration) && vid.duration > 0 ? vid.duration : 3.0;
+                    resolve({
+                        file,
+                        previewUrl,
+                        id: Math.random().toString(36).substr(2, 9),
+                        duration: dur,
+                        x: 0, y: 0, scale: 1,
+                        type: 'video',
+                        videoDuration: dur
+                    });
+                };
+                vid.onerror = () => {
+                    resolve({
+                        file,
+                        previewUrl,
+                        id: Math.random().toString(36).substr(2, 9),
+                        duration: 3.0,
+                        x: 0, y: 0, scale: 1,
+                        type: 'video',
+                        videoDuration: 3.0
+                    });
+                };
+            } else {
+                resolve({
+                    file,
+                    previewUrl,
+                    id: Math.random().toString(36).substr(2, 9),
+                    duration: 3.0,
+                    x: 0, y: 0, scale: 1,
+                    type: 'image',
+                    videoDuration: null
+                });
+            }
         });
     });
-    syncDurationsToAudio();
-    renderTimeline();
-    if (state.selectedIndex === -1) selectImage(0);
+
+    Promise.all(promises).then(clips => {
+        clips.forEach(clip => state.images.push(clip));
+        syncDurationsToAudio();
+        renderTimeline();
+        if (state.selectedIndex === -1) selectImage(0);
+    });
+
+    // Reset input so the same file can be re-added if needed
+    e.target.value = '';
 }
 
 function syncDurationsToAudio() {
@@ -89,12 +138,6 @@ function handleBulkDurationChange(e) {
     const val = parseFloat(e.target.value);
     if (isNaN(val) || val <= 0) return;
     state.images.forEach(img => img.duration = val);
-    
-    // We update audio duration too if audio exists, 
-    // or just let it mismatch if user wants specific durations?
-    // In this app, it seems syncDurationsToAudio is used to fit audio.
-    // If user sets bulk duration, we might want to respect it but they might lose sync.
-    // Let's just update and re-render.
     renderTimeline();
     updateAudioDurationDisplay();
 }
@@ -103,7 +146,6 @@ function handleReverseTimeline() {
     state.images.reverse();
     renderTimeline();
     if (state.selectedIndex !== -1) {
-        // Update selection if needed, or just clear it
         state.selectedIndex = -1;
     }
 }
@@ -116,20 +158,47 @@ function updateAudioDurationDisplay() {
 function renderTimeline() {
     const track = document.getElementById('video-track-content');
     track.innerHTML = '';
-    state.images.forEach((img, i) => {
+    state.images.forEach((clip, i) => {
         const item = document.createElement('div');
         item.className = `timeline-item ${state.selectedIndex === i ? 'active' : ''}`;
-        item.style.width = `${img.duration * state.scale}px`;
+        item.style.width = `${clip.duration * state.scale}px`;
         item.onclick = () => selectImage(i);
 
-        const thumb = document.createElement('img'); thumb.src = img.previewUrl;
-        item.appendChild(thumb);
-        const badge = document.createElement('div'); badge.className = 'duration-badge';
-        badge.innerText = `${img.duration.toFixed(1)}s`;
+        if (clip.type === 'video') {
+            // Use a video element as thumbnail (muted, no controls, paused at start)
+            const thumb = document.createElement('video');
+            thumb.src = clip.previewUrl;
+            thumb.muted = true;
+            thumb.preload = 'metadata';
+            thumb.currentTime = 0.1; // Seek slightly in to get a frame
+            thumb.style.width = '100%';
+            thumb.style.height = '100%';
+            thumb.style.objectFit = 'cover';
+            thumb.style.opacity = '0.7';
+            thumb.style.pointerEvents = 'none';
+            item.appendChild(thumb);
+
+            // Video type badge
+            const typeBadge = document.createElement('div');
+            typeBadge.className = 'media-type-badge video-badge';
+            typeBadge.innerHTML = '▶ Video';
+            item.appendChild(typeBadge);
+        } else {
+            const thumb = document.createElement('img');
+            thumb.src = clip.previewUrl;
+            item.appendChild(thumb);
+        }
+
+        const badge = document.createElement('div');
+        badge.className = 'duration-badge';
+        badge.innerText = `${clip.duration.toFixed(1)}s`;
         item.appendChild(badge);
-        const handle = document.createElement('div'); handle.className = 'resize-handle';
+
+        const handle = document.createElement('div');
+        handle.className = 'resize-handle';
         setupResize(handle, i);
         item.appendChild(handle);
+
         track.appendChild(item);
     });
 
@@ -142,7 +211,9 @@ function renderTimeline() {
         clip.innerText = state.audioFile.name;
         audioCont.appendChild(clip);
     }
-    document.getElementById('total-duration').innerText = formatTime(state.audioDuration);
+    document.getElementById('total-duration').innerText = formatTime(
+        state.images.reduce((s, img) => s + img.duration, 0)
+    );
 }
 
 function selectImage(index) {
@@ -153,20 +224,41 @@ function selectImage(index) {
 
 function updatePreview() {
     const container = document.getElementById('video-placeholder');
+    // Pause any existing preview video before clearing
+    const existingVid = container.querySelector('video');
+    if (existingVid) existingVid.pause();
     container.innerHTML = '';
-    if (state.selectedIndex === -1) return;
-    const imgData = state.images[state.selectedIndex];
-    document.getElementById('image-scale').value = imgData.scale;
 
-    const img = document.createElement('img');
-    img.src = imgData.previewUrl;
-    img.draggable = false;
-    img.style.left = `${imgData.x}px`;
-    img.style.top = `${imgData.y}px`;
-    img.style.transform = `scale(${imgData.scale})`;
-    if (state.orientation === 'landscape') img.style.width = '100%';
-    else img.style.height = '100%';
-    container.appendChild(img);
+    if (state.selectedIndex === -1) return;
+    const clipData = state.images[state.selectedIndex];
+    document.getElementById('image-scale').value = clipData.scale;
+
+    if (clipData.type === 'video') {
+        const vid = document.createElement('video');
+        vid.src = clipData.previewUrl;
+        vid.controls = true;
+        vid.loop = true;
+        vid.autoplay = true;
+        vid.muted = false;
+        vid.draggable = false;
+        vid.style.left = `${clipData.x}px`;
+        vid.style.top = `${clipData.y}px`;
+        vid.style.transform = `scale(${clipData.scale})`;
+        if (state.orientation === 'landscape') vid.style.width = '100%';
+        else vid.style.height = '100%';
+        vid.style.position = 'absolute';
+        container.appendChild(vid);
+    } else {
+        const img = document.createElement('img');
+        img.src = clipData.previewUrl;
+        img.draggable = false;
+        img.style.left = `${clipData.x}px`;
+        img.style.top = `${clipData.y}px`;
+        img.style.transform = `scale(${clipData.scale})`;
+        if (state.orientation === 'landscape') img.style.width = '100%';
+        else img.style.height = '100%';
+        container.appendChild(img);
+    }
 }
 
 function setupResize(handle, index) {
@@ -200,35 +292,51 @@ function handleCanvasWheel(e) {
 
 function handleCanvasMouseDown(e) {
     if (state.selectedIndex === -1) return;
+    const clip = state.images[state.selectedIndex];
+    // Don't intercept drag on video controls
+    if (e.target.tagName === 'VIDEO') return;
     e.preventDefault();
-    const img = state.images[state.selectedIndex];
-    let startX = e.clientX - img.x;
-    let startY = e.clientY - img.y;
+    let startX = e.clientX - clip.x;
+    let startY = e.clientY - clip.y;
     document.onmousemove = (me) => {
-        img.x = me.clientX - startX;
-        img.y = me.clientY - startY;
+        clip.x = me.clientX - startX;
+        clip.y = me.clientY - startY;
         updatePreview();
     };
     document.onmouseup = () => document.onmousemove = document.onmouseup = null;
 }
 
 function formatTime(s) {
-    const m = Math.floor(s/60);
-    return `${m}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+    const m = Math.floor(s / 60);
+    return `${m}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 }
 
 async function handleGenerate() {
     if (!state.audioFile || state.images.length === 0) return alert("Add content first");
     const formData = new FormData();
     formData.append('audio', state.audioFile);
-    const timeline = state.images.map((img, i) => {
-        formData.append('images', img.file);
-        return { file_index: i, duration: img.duration, x_offset: img.x, y_offset: img.y, scale: img.scale };
+
+    const timeline = state.images.map((clip, i) => {
+        // All clips go through the 'images' field — backend differentiates by media_types
+        formData.append('images', clip.file);
+        return {
+            file_index: i,
+            duration: clip.duration,
+            x_offset: clip.x,
+            y_offset: clip.y,
+            scale: clip.scale,
+            media_type: clip.type  // 'image' or 'video'
+        };
     });
+
     formData.append('timeline_data', JSON.stringify(timeline));
     formData.append('orientation', state.orientation);
     formData.append('style', document.getElementById('style-select').value);
+
     document.getElementById('status-overlay').classList.remove('hidden');
+    document.getElementById('result-actions').classList.add('hidden');
+    document.getElementById('status-text').innerText = 'Processing...';
+
     try {
         const res = await fetch(`${API_BASE}/video/generate-video`, { method: 'POST', body: formData });
         const data = await res.json();
@@ -245,6 +353,9 @@ function pollStatus(tid) {
             clearInterval(interval);
             document.getElementById('result-actions').classList.remove('hidden');
             document.getElementById('download-link').href = `${API_BASE}${data.download_url}`;
+        } else if (data.status === 'failed') {
+            clearInterval(interval);
+            document.getElementById('status-text').innerText = `Failed: ${data.error_message || 'Unknown error'}`;
         }
     }, 3000);
 }

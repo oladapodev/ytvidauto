@@ -37,7 +37,8 @@ async def run_video_generation_task(
     orientation: str = "landscape",
     image_duration: float = 0.0,
     timeline_durations: List[float] = None,
-    timeline_offsets: List[dict] = None
+    timeline_offsets: List[dict] = None,
+    media_types: List[str] = None
 ):
     try:
         task_registry[task_id].status = "processing"
@@ -70,7 +71,8 @@ async def run_video_generation_task(
             orientation=orientation,
             image_duration=image_duration,
             image_durations=timeline_durations,
-            offsets=timeline_offsets
+            offsets=timeline_offsets,
+            media_types=media_types
         )
 
         task_registry[task_id].status = "completed"
@@ -117,6 +119,7 @@ async def generate_video(
     final_ordered_paths = []
     final_durations = []
     final_offsets = []
+    final_media_types = []
     
     if timeline_data:
         try:
@@ -131,6 +134,7 @@ async def generate_video(
                         "y": float(entry.get("y_offset", 0)),
                         "scale": float(entry.get("scale", 1.0))
                     })
+                    final_media_types.append(entry.get("media_type", "image"))
         except:
             final_ordered_paths = temp_image_paths
     else:
@@ -148,7 +152,8 @@ async def generate_video(
         orientation=orientation,
         image_duration=image_duration,
         timeline_durations=final_durations,
-        timeline_offsets=final_offsets
+        timeline_offsets=final_offsets,
+        media_types=final_media_types if final_media_types else None
     )
 
     return VideoGenerationResponse(task_id=task_id, status="pending", poll_url=f"/video/status/{task_id}")
