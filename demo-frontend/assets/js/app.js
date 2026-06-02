@@ -1,6 +1,41 @@
-let API_BASE = 'https://molecular-janeen-davidson0071-394ced15.koyeb.app';
-if (window.location.hostname !== '' && window.location.protocol !== 'file:') {
-    API_BASE = window.location.origin;
+const DEFAULT_API_BASE = 'https://molecular-janeen-davidson0071-394ced15.koyeb.app';
+let API_BASE = DEFAULT_API_BASE;
+let apiBaseChecked = false;
+
+async function resolveApiBase() {
+    if (apiBaseChecked) {
+        return API_BASE;
+    }
+
+    // Default to local backend when served from a deployed origin.
+    // If running locally via file:// or localhost with no local API, fall back to remote.
+    const localBase = window.location.protocol === 'file:' || window.location.origin === 'null'
+        ? null
+        : window.location.origin;
+
+    const isLocalHost = localBase && /localhost|127\.0\.0\.1/.test(localBase);
+    if (localBase && !isLocalHost) {
+        API_BASE = localBase;
+        apiBaseChecked = true;
+        return API_BASE;
+    }
+
+    if (localBase) {
+        try {
+            const docsRes = await fetch(`${localBase}/video/health`, { method: 'GET', cache: 'no-store' });
+            if (docsRes.ok) {
+                API_BASE = localBase;
+                apiBaseChecked = true;
+                return API_BASE;
+            }
+        } catch (e) {
+            // Ignore and use remote fallback below
+        }
+    }
+
+    API_BASE = DEFAULT_API_BASE;
+    apiBaseChecked = true;
+    return API_BASE;
 }
 
 // Global State
@@ -312,7 +347,8 @@ function formatTime(s) {
 }
 
 async function handleGenerate() {
-    if (!state.audioFile || state.images.length === 0) return alert("Add content first");
+    if (!state.audioFile || state.images.length === 0) return alert('Add content first');
+    const apiBase = await resolveApiBase();
     const formData = new FormData();
     formData.append('audio', state.audioFile);
 
@@ -338,24 +374,54 @@ async function handleGenerate() {
     document.getElementById('status-text').innerText = 'Processing...';
 
     try {
-        const res = await fetch(`${API_BASE}/video/generate-video`, { method: 'POST', body: formData });
+        const res = await fetch(`${apiBase}/video/generate-video`, { method: 'POST', body: formData });
+        if (!res.ok) {
+            throw new Error(`Failed to submit generation request (${res.status})`);
+        }
         const data = await res.json();
-        pollStatus(data.task_id);
-    } catch (e) { alert(e.message); }
+        if (!data.task_id) {
+            throw new Error(data.error || 'No task ID returned from generator');
+        }
+        document.getElementById('task-id-display').innerText = `Task ID: ${data.task_id}`;
+        pollStatus(data.task_id, apiBase);
+    } catch (e) {
+        document.getElementById('status-text').innerText = `Error: ${e.message || e}`;
+        alert(e.message);
+    }
 }
 
-function pollStatus(tid) {
+async function pollStatus(tid, apiBase) {
+    let finished = false;
     const interval = setInterval(async () => {
-        const res = await fetch(`${API_BASE}/video/status/${tid}`);
-        const data = await res.json();
-        document.getElementById('status-text').innerText = data.status.toUpperCase();
-        if (data.status === 'completed') {
+        if (finished) {
             clearInterval(interval);
-            document.getElementById('result-actions').classList.remove('hidden');
-            document.getElementById('download-link').href = `${API_BASE}${data.download_url}`;
-        } else if (data.status === 'failed') {
+            return;
+        }
+        try {
+            const res = await fetch(`${apiBase}/video/status/${tid}`);
+            if (!res.ok) {
+                throw new Error(`Failed to fetch status (${res.status})`);
+            }
+            const data = await res.json();
+            if (!data || !data.status) {
+                throw new Error('Invalid status response');
+            }
+            document.getElementById('status-text').innerText = data.status.toUpperCase();
+            if (data.status === 'completed') {
+                finished = true;
+                clearInterval(interval);
+                document.getElementById('result-actions').classList.remove('hidden');
+                if (data.download_url) {
+                    document.getElementById('download-link').href = `${apiBase}${data.download_url}`;
+                }
+            } else if (data.status === 'failed') {
+                finished = true;
+                clearInterval(interval);
+                document.getElementById('status-text').innerText = `Failed: ${data.error_message || 'Unknown error'}`;
+            }
+        } catch (err) {
             clearInterval(interval);
-            document.getElementById('status-text').innerText = `Failed: ${data.error_message || 'Unknown error'}`;
+            document.getElementById('status-text').innerText = `Error: ${err.message || err}`;
         }
     }, 3000);
 }
