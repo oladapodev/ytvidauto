@@ -7,7 +7,7 @@ const corsHeaders = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const KOYEB_API_URL = "https://molecular-janeen-davidson0071-394ced15.koyeb.app";
+const KOYEB_API_URL = "https://ytvidauto.koyeb.app";
 
 /**
  * Polls the Koyeb API until the video generation task is completed or failed.

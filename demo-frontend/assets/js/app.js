@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE = 'https://molecular-janeen-davidson0071-394ced15.koyeb.app';
+const DEFAULT_API_BASE = 'https://ytvidauto.koyeb.app';
 let API_BASE = DEFAULT_API_BASE;
 let apiBaseChecked = false;
 
